@@ -34,7 +34,7 @@ class GNNLightning(LightningModule):
         self.loss = nn.BCELoss()
 
         ## checks
-        if self.subject_matrix.shape[0] != self.rel_matrix.shape[0]:
+        if torch.is_tensor(self.subject_matrix) and self.subject_matrix.shape[0] != self.rel_matrix.shape[0]:
             raise ValueError(f'Unexpected shape of subject_matrix or relation matrix. Expected dimension 0 to be same in subject_matrix and rel_matrix')
 
     def forward(self, trans_input):
