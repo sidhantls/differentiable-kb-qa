@@ -14,22 +14,28 @@ class GNNLightning(LightningModule):
     Pytorch lightning trainer
     """
 
-    def __init__(self, trans_model, subject_matrix, rel_matrix, object_matrix):
+    def __init__(self, trans_model, subject_matrix, rel_matrix, object_matrix, trans_output_size=384):
         super(GNNLightning, self).__init__()
         """
         Expects: 
 
         trans_model: hugginface transformer model 
-        subject_matrix: (num_entities, num_triplets) sparse
+        subject_matrix: (num_triplets, num_entities) sparse
         rel_matrix: (num_triplets, num_rels) sparse
         object_matrix: (num_triplets, num_entities) sparse
         """
 
-        self.model = trans_model
+        self.num_entities = subject_matrix.shape[1]
+        self.num_rels = rel_matrix.shape[1]
+
+        self.trans_model = trans_model
+        self.decoder = nn.Linear(trans_output_size, self.num_rels)
 
         self.subject_matrix = subject_matrix 
         self.rel_matrix = rel_matrix 
         self.object_matrix = object_matrix
+
+
 
         self.loss = nn.BCELoss()
 
@@ -37,11 +43,13 @@ class GNNLightning(LightningModule):
         if torch.is_tensor(self.subject_matrix) and self.subject_matrix.shape[0] != self.rel_matrix.shape[0]:
             raise ValueError(f'Unexpected shape of subject_matrix or relation matrix. Expected dimension 0 to be same in subject_matrix and rel_matrix')
 
-    def forward(self, trans_input):
+        
+    def forward(self, trans_input, subject_vectors):
         model_output = self.trans_model(**trans_input)
-        pred_relations = mean_pooling(model_output, trans_input['attention_mask'])
+        encoded_relations = self.mean_pooling(model_output, trans_input['attention_mask'])
+        pred_relations = self.decoder(encoded_relations)
 
-        predicted_objects = self.follow(self, subject, pred_relations, subject_matrix, rel_matrix, object_matrix)
+        predicted_objects = self.follow(subject_vectors, pred_relations, self.subject_matrix, self.rel_matrix, self.object_matrix)
 
         return predicted_objects
 
@@ -58,7 +66,11 @@ class GNNLightning(LightningModule):
         object_matrix: (num_entities, num_triplets) sparse
         
         """
+        assert subject.shape[0] == self.num_entities
+
         subject_vectors = torch.sparse.mm(subject_matrix, subject) # (num_triplets, bs)
+
+        assert relation.shape[1] == self.num_rels
 
         relation = torch.transpose(relation, 0, 1)
         relation_vectors = torch.sparse.mm(rel_matrix, relation) # (num_triplets, bs)
@@ -72,7 +84,7 @@ class GNNLightning(LightningModule):
 
 
     #Mean Pooling - Take attention mask into account for correct averaging
-    def mean_pooling(model_output, attention_mask):
+    def mean_pooling(self, model_output, attention_mask):
         token_embeddings = model_output[0] #First element of model_output contains all token embeddings
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
@@ -125,11 +137,4 @@ class GNNLightning(LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return 
-
-    #Mean Pooling - Take attention mask into account for correct averaging
-    def mean_pooling(model_output, attention_mask):
-        token_embeddings = model_output[0] #First element of model_output contains all token embeddings
-        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-        return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-
 
