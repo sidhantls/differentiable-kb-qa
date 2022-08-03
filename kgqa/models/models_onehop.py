@@ -3,6 +3,7 @@ from pytorch_lightning import LightningModule
 import pytorch_lightning
 import torch
 from torch import nn
+import transformers
 
 def calculate_accuracy(preds, true):    
     pred_class = preds.argmax(-1)
@@ -35,9 +36,7 @@ class GNNLightning(LightningModule):
         self.rel_matrix = rel_matrix 
         self.object_matrix = object_matrix
 
-
-
-        self.loss = nn.BCELoss()
+        self.loss = nn.BCEWithLogitsLoss()
 
         ## checks
         if torch.is_tensor(self.subject_matrix) and self.subject_matrix.shape[0] != self.rel_matrix.shape[0]:
@@ -70,8 +69,6 @@ class GNNLightning(LightningModule):
 
         subject_vectors = torch.sparse.mm(subject_matrix, subject) # (num_triplets, bs)
 
-        assert relation.shape[1] == self.num_rels
-
         relation = torch.transpose(relation, 0, 1)
         relation_vectors = torch.sparse.mm(rel_matrix, relation) # (num_triplets, bs)
 
@@ -92,34 +89,35 @@ class GNNLightning(LightningModule):
 
     
     def shared_step(self, batch, dataname='train'):
-        x, y = batch
-
-        y_pred = self(x)
-        loss = self.loss(y_pred, y)
+        trans_input, subject_vector, object_labels = batch
+        subject_vector2 = torch.transpose(subject_vector, 0, 1)
+        
+        object_preds = self(trans_input, subject_vector2)
+        loss = self.loss(object_preds, object_labels)
 
         if dataname == 'train':
             on_step = True
         else:
             on_step = False
             
-        with torch.no_grad():
-            acc = calculate_accuracy(y_pred, y)
-            self.log(f'{dataname}_acc', acc, on_step=on_step, on_epoch=True, prog_bar=True)
+        # with torch.no_grad():
+        #     acc = calculate_accuracy(y_pred, y)
+        #     self.log(f'{dataname}_acc', acc, on_step=on_step, on_epoch=True, prog_bar=True)
             
-            if dataname != 'train':
-                y_pred_norm = torch.softmax(y_pred, dim=-1)
-                topk_acc = self.get_acc_topk(y_pred_norm, y).item()
-                self.log(f'{dataname}_acc_top_{self.topk}',
-                         topk_acc, on_step=False, on_epoch=True, prog_bar=True)
+        #     if dataname != 'train':
+        #         y_pred_norm = torch.softmax(y_pred, dim=-1)
+        #         topk_acc = self.get_acc_topk(y_pred_norm, y).item()
+        #         self.log(f'{dataname}_acc_top_{self.topk}',
+        #                  topk_acc, on_step=False, on_epoch=True, prog_bar=True)
 
-        self.log(f'{dataname}_loss', loss, on_step=on_step,
-                 on_epoch=True, prog_bar=True)
+        self.log(f'{dataname}_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
         
         return loss
     
         
     def training_step(self, batch, batch_idx):
         loss = self.shared_step(batch, dataname='train')
+        print(loss)
         
         return loss
 
@@ -135,6 +133,8 @@ class GNNLightning(LightningModule):
         return loss
     
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return 
+        # optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
+        optimizer = transformers.AdamW(lr=5e-3, params=self.parameters())
+
+        return optimizer
 
