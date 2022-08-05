@@ -116,9 +116,9 @@ class GNNLightning(LightningModule):
             object_labels = object_labels.detach().cpu()
             object_preds = object_logits.detach().cpu()
 
-            recall, precision, f1 = compute_multilabel_precision(object_preds, object_labels)
             hit_k1 = get_hit_k1(object_preds, object_labels)
-
+            recall, precision, f1 = compute_multilabel_precision(object_preds, object_labels)
+            
             self.log(f'{dataname}_recall', recall, on_step=on_step, on_epoch=True, prog_bar=False)
             self.log(f'{dataname}_precision', precision, on_step=on_step, on_epoch=True, prog_bar=False)
             self.log(f'{dataname}_f1', f1, on_step=on_step, on_epoch=True, prog_bar=True)
@@ -173,6 +173,10 @@ def compute_multilabel_precision(preds, true):
     mean_recall = recall.mean()
 
     precision = true_positives.sum(1)/preds.sum(1)
+    # fill nans and missing
+    precision[precision==torch.inf] = 0 
+    precision[torch.isnan(precision)] = 0
+    
     mean_precision = precision.mean()
 
     f1 = mean_recall * mean_precision / (mean_precision + mean_recall)
