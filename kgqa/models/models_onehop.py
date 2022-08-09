@@ -43,22 +43,20 @@ class GNNLightning(LightningModule):
             raise ValueError(f'Unexpected shape of subject_matrix or relation matrix. Expected dimension 0 to be same in subject_matrix and rel_matrix')
 
     
-    def forward(self, trans_input, subject_vectors):
+    def forward(self, trans_input, subject_vectors, do_max=False):
         model_output = self.trans_model(**trans_input)
 
         # encoded_relations = self.mean_pooling(model_output, trans_input['attention_mask'])
 
         encoded_relations = self.get_cls_hidden(model_output)
         pred_logits = self.decoder(encoded_relations)
-        pred_relations = torch.sigmoid(pred_logits)
+        pred_relations = torch.softmax(pred_logits, 1)
 
-        predicted_objects = self.follow(subject_vectors, pred_relations, self.subject_matrix, self.rel_matrix, self.object_matrix)
-
-        predicted_objects = torch.clamp(predicted_objects, max=1.)
+        predicted_objects = self.follow(subject_vectors, pred_relations, self.subject_matrix, self.rel_matrix, self.object_matrix, do_max=do_max)
 
         return predicted_objects
 
-    def follow(self, subject, relation, subject_matrix, rel_matrix, object_matrix):
+    def follow(self, subject, relation, subject_matrix, rel_matrix, object_matrix, do_max=False):
         """
         Performs the follow operation as mentioned in paper.
 
@@ -75,14 +73,19 @@ class GNNLightning(LightningModule):
 
         subject_vectors = torch.sparse.mm(subject_matrix, subject) # (num_triplets, bs)
 
+        # for inference, since we are working with single hop only, just consider 1 relation per prediction
+        if do_max == True: 
+            relation = (relation==relation.max(-1).values[:, None]).float()
+
         relation = torch.transpose(relation, 0, 1)
+
         relation_vectors = torch.sparse.mm(rel_matrix, relation) # (num_triplets, bs)
 
         object_query = subject_vectors * relation_vectors
 
         predicted_objects = torch.sparse.mm(object_matrix, object_query) # (num_entities, bs)
         predicted_objects = torch.transpose(predicted_objects, 0, 1) # (bs, num_entities)
-
+        
         return predicted_objects
 
 
@@ -97,15 +100,21 @@ class GNNLightning(LightningModule):
 
         return cls_hidden_state
 
-
     
     def shared_step(self, batch, dataname='train'):
         trans_input, subject_vector, object_labels = batch
         subject_vector2 = torch.transpose(subject_vector, 0, 1)
         
-        object_logits = self(trans_input, subject_vector2)
+        if dataname == 'train':
+            do_max = False
+        else:
+            do_max = False
 
-        loss = calculate_BCE(object_logits, object_labels)
+        object_logits = self(trans_input, subject_vector2, do_max)
+        object_logits_thresh = torch.clamp(object_logits, max=1., min=0.)
+
+
+        loss = calculate_BCE(object_logits_thresh, object_labels)
 
         if dataname == 'train':
             on_step = True
@@ -118,10 +127,12 @@ class GNNLightning(LightningModule):
 
             hit_k1 = get_hit_k1(object_preds, object_labels)
             recall, precision, f1 = compute_multilabel_precision(object_preds, object_labels)
+            recall70, precision70, f170 = compute_multilabel_precision(object_preds, object_labels, threshold=0.70)
             
             self.log(f'{dataname}_recall', recall, on_step=on_step, on_epoch=True, prog_bar=False)
             self.log(f'{dataname}_precision', precision, on_step=on_step, on_epoch=True, prog_bar=False)
             self.log(f'{dataname}_f1', f1, on_step=on_step, on_epoch=True, prog_bar=True)
+            self.log(f'{dataname}_precision70', precision70, on_step=True, on_epoch=True, prog_bar=True)
 
             self.log(f'{dataname}_hit_k1', hit_k1, on_step=on_step, on_epoch=True, prog_bar=True)
     
@@ -145,6 +156,12 @@ class GNNLightning(LightningModule):
         loss = self.shared_step(batch, dataname='val')
 
         return loss
+
+    def predict_step(self, batch, batch_idx):
+        loss = self.shared_step(batch, dataname='val')
+
+        return loss
+
     
     def configure_optimizers(self):
         # optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
@@ -160,13 +177,13 @@ def calculate_BCE(preds, labels):
 # def compute_hit_1(preds, true):
 
 
-def compute_multilabel_precision(preds, true):
+def compute_multilabel_precision(preds, true, threshold=0.5):
     """
     Calculates multi-label precision and recall 
 
     """
-    preds[preds > 0.5] = 1 
-    preds[preds <= 0.5] = 0. 
+
+    preds = (preds>=threshold).float()
 
     true_positives = (preds == true) & (true == 1)
     recall = true_positives.sum(1)/true.sum(1)
@@ -174,17 +191,18 @@ def compute_multilabel_precision(preds, true):
 
     precision = true_positives.sum(1)/preds.sum(1)
     # fill nans and missing
-    precision[precision==torch.inf] = 0 
-    precision[torch.isnan(precision)] = 0
-    
-    mean_precision = precision.mean()
+    precision[precision==torch.inf] = torch.nan
+    # precision[torch.isnan(precision)] = 0
+    # mean_precision = precision.mean()
+
+    mean_precision = precision.nanmean()
 
     f1 = mean_recall * mean_precision / (mean_precision + mean_recall)
 
     return mean_recall, mean_precision, f1
 
 
-def get_hit_k1(preds, true):
+def get_hit_k1(preds, true, aggregate=True):
     """
     Calulates mean hit @ k = 1
     """
@@ -197,6 +215,11 @@ def get_hit_k1(preds, true):
     # get how many of these indices correspond with true value
     hits = true.gather(1, pred_indices)
     
-    mean_hit = hits.mean()
+    if aggregate:
+        mean_hit = hits.mean()
+    else:
+        mean_hit = hits
 
     return mean_hit
+
+
