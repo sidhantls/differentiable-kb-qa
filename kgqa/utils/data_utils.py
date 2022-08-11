@@ -210,7 +210,7 @@ def create_sparse_tensor(ent_to_idx, triplets, name='head'):
         cols = [entity_idx for (_, _, entity_idx) in triplets] 
         
     else:
-        raise NotImplementedErrort('node name should be either head, tail or relation')
+        raise NotImplementedError('node name should be either head, tail or relation')
         
     rows = [idx for idx in range(len(triplets))]
     indices = [rows, cols]
