@@ -24,7 +24,7 @@ One expectation was that 3 hop performance to be worse than 2-hop, which was the
 
 ### User Experimentation
 
-Users are free to use this codebase as a starting point to implement improvements in this space of question answering with reified differential KBs
+The purpose of this repository to provide a baseline to users to implement improvements in this space of question answering with reified differential KBs
 
 * Update encoder:
     * Utilize different transformer model - Pass in any model from Hugginface library 
@@ -33,7 +33,7 @@ Users are free to use this codebase as a starting point to implement improvement
 
 
 ### To add
-    * To add training and inference on custom datasets
-    * Method to integrate 1hop, 2hop, 3hop one training procedure
+* To add training and inference on custom datasets
+* Method to integrate 1hop, 2hop, 3hop one training procedure
 
 
