@@ -34,6 +34,6 @@ The purpose of this repository is to provide a baseline to users to implement im
 
 ### To add
 * To add training and inference on custom datasets
-* Method to integrate 1hop, 2hop, 3hop one training procedure
+* Method to integrate 1hop, 2hop, 3hop into one training procedure
 
 
