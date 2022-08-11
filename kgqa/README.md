@@ -1,4 +1,4 @@
-# Reified KBs - Differentiable Knowledge Bases 
+# QA on Differentiable Knowledge Bases- Reified KB
 This is an unofficial adaption of the work presented in Scalable Neural Methods for Reasoning With a Symbolic Knowledge Base- [Paper](https://arxiv.org/abs/2002.06115). Utilizes a transformer based encoder, similar to the work [here](https://arxiv.org/abs/2109.05808v1), as opposed to word2vec which is how it was implemented in the Symbolic KB paper
 
 The purpose of this implementation is to provide insights into the implementation level information of these papers and the ideas asscociated with it - such as enabling a differentiable KG through the "follow" operation. 
