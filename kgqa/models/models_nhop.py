@@ -16,9 +16,11 @@ class KBLightning(LightningModule):
     """
     Pytorch Lightning model for question answering based on differentiable knowledge bases 
 
+    Answer questions over num_hops number of hops
+
     """
 
-    def __init__(self, trans_model, subject_matrix, rel_matrix, object_matrix, num_hops, trans_output_size=384):
+    def __init__(self, trans_model, subject_matrix, rel_matrix, object_matrix, num_hops, trans_output_size=384, num_training_steps=100):
         super(KBLightning, self).__init__()
         """
         Expects: 
@@ -48,7 +50,9 @@ class KBLightning(LightningModule):
         if torch.is_tensor(self.subject_matrix) and self.subject_matrix.shape[0] != self.rel_matrix.shape[0]:
             raise ValueError(f'Unexpected shape of subject_matrix or relation matrix. Expected dimension 0 to be same in subject_matrix and rel_matrix')
 
-    
+        # required for LR scheduler
+        self.num_training_steps = num_training_steps
+
     def forward(self, trans_input, subject_vectors):
         model_output = self.trans_model(**trans_input)
 
@@ -147,9 +151,9 @@ class KBLightning(LightningModule):
 
     
     def configure_optimizers(self):
-        # optimizer = torch.optim.Adam(self.parameters(), lr=1e-5)
         optimizer = transformers.AdamW(lr=5e-3, params=self.parameters())
-
+        # scheduler = transformers.get_linear_schedule_with_warmup(optimizer, self.num_training_steps//4, self.num_training_steps, last_epoch = -1)
+        
         return optimizer
 
 """
