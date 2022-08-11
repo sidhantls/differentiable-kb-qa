@@ -24,7 +24,7 @@ One expectation was that 3 hop performance to be worse than 2-hop, which was the
 
 ### User Experimentation
 
-The purpose of this repository to provide a baseline to users to implement improvements in this space of question answering with reified differential KBs
+The purpose of this repository is to provide a baseline to users to implement improvements in this space of question answering with reified differential KBs
 
 * Update encoder:
     * Utilize different transformer model - Pass in any model from Hugginface library 
