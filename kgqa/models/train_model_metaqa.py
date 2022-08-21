@@ -26,6 +26,7 @@ parser.add_argument("--num_hops", help="num_hops dataset to train on MetaQA. 1, 
 args = parser.parse_args()
 
 NUM_HOPS = args.num_hops
+USE_NTM_TRAINING = False # rephrased training dataset of metaqa
 
 root_dir = Path(os.getcwd()).parents[0]
 sys.path.append(str(root_dir))
@@ -68,10 +69,15 @@ trans_size=384
 
 qa_dir = data_dir/f'{NUM_HOPS}-hop/vanilla'
 qa_paths = os.listdir(qa_dir)
-
-qa_train = list(filter(lambda x: 'train' in x, qa_paths))[0]
 qa_test = list(filter(lambda x: 'test' in x, qa_paths))[0]
 qa_val = list(filter(lambda x: 'dev' in x, qa_paths))[0]
+
+# ntm data
+if USE_NTM_TRAINING:
+    qa_dir = data_dir/f'{NUM_HOPS}-hop/ntm'
+    qa_paths = os.listdir(qa_dir)
+
+qa_train = list(filter(lambda x: 'train' in x, qa_paths))[0]
 
 val_pairs = data_utils.load_qa_pairs(qa_dir/qa_val)
 train_pairs = data_utils.load_qa_pairs(qa_dir/qa_train)
@@ -157,6 +163,7 @@ else:
     raise ValueError('Expected num hops to be 1, 2, or 3')
   
 max_epochs = 5
+
 USE_GPU = torch.cuda.is_available()
 
 early_stop_callback = EarlyStopping(monitor="train_hit_k1", 
@@ -185,10 +192,11 @@ else:
     net.rel_matrix = net.rel_matrix.cpu()
     gpus = 0
     
+log_every_n_steps = 10
 logger = TensorBoardLogger("kb_logs", name=f"reifedkb-{NUM_HOPS}")
 
 trainer = pl.Trainer(max_epochs=max_epochs, gpus=gpus, logger=logger, callbacks=[early_stop_callback, checkpoint_callback],
-                    val_check_interval=0.50)
+                    val_check_interval=0.50, log_every_n_steps=log_every_n_steps)
 trainer.fit(net, train_dl, val_dl)
 
 # load best checkpoint for testing
