@@ -5,7 +5,7 @@ The purpose of this implementation is to provide insights into the implementatio
 
 
 ### Implemenation
-Implements a QA model to retrieve questions from a KB. This consists of an encoder, MiniLM-6/MiniLM-12, which encodes a question. And then, it performs the differentiable query operation on the knowledge base as mentioned in the reified KB paper above. This encode archicture is different from the paper in that it's not based on a word2vec model, but a tranformer. We fine-tune a MiniLM-6 Sentence Transformer - primarily because of the memory and compute efficiency. Can replace this with any other model from the hugginface library 
+Implements a QA model to retrieve questions from a KB. This consists of an encoder, MiniLM-6/MiniLM-12, which encodes a question. And then, it performs the differentiable query operation on the knowledge base as mentioned in the reified KB paper above. This encode archicture is different from the paper in that it's not based on a word2vec model, but a tranformer. We fine-tune a MiniLM-6 Sentence Transformer - primarily because of the memory and compute efficiency. Can replace this with any other model from the huggingface library 
 
 
 #### How to run: 
@@ -16,9 +16,9 @@ Bencharked on the [MetaQA](https://github.com/yuyuz/MetaQA) dataset, similar to 
 
 | MetaQA      | Hit @k =1  |
 | ----------- | ----------- |
-| 1-hop       | 0.935       |
-| 2-hop       | 0.769       |
-| 3-hop       | 0.803       |
+| 1-hop       | 0.977       |
+| 2-hop       | 0.787       |
+| 3-hop       | 0.821       |
 
 One expectation was that 3 hop performance to be worse than 2-hop, which was the case in reified kb paper as well. The reified KB paper does report slightly higher 1-hop and 2-hop performance, but this 3-hop outperforms it. 
 
@@ -38,4 +38,4 @@ The purpose of this repository is to provide a baseline to users to implement im
 
 
 ### Installation 
-Requires pytorch-lightning >= 1.5.0, pytorch >= 1.7
+Requires pytorch-lightning >= 1.5.0, pytorch >= 1.7, tqdm
