@@ -123,7 +123,7 @@ class KBLightning(LightningModule):
 
             self.log(f'{dataname}_hit_k1', hit_k1, on_step=on_step, on_epoch=True, prog_bar=True)
     
-        self.log(f'{dataname}_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(f'{dataname}_loss', loss, on_step=on_step, on_epoch=True, prog_bar=True)
         
         return loss
     
