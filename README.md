@@ -20,7 +20,7 @@ Bencharked on the [MetaQA](https://github.com/yuyuz/MetaQA) dataset, similar to 
 | 2-hop       | 0.787       |
 | 3-hop       | 0.821       |
 
-One expectation was that 3 hop performance to be worse than 2-hop, which was the case in reified kb paper as well. The reified KB paper does report slightly higher 1-hop and 2-hop performance, but this 3-hop outperforms it. 
+One expectation was that 3 hop performance to be worse than 2-hop, which was the case in reified kb paper as well. The reified KB paper does report higher 2-hop performance, but this 1-hop and 3-hop outperforms it. 
 
 #### User Experimentation
 
@@ -34,7 +34,7 @@ The purpose of this repository is to provide a baseline to users to implement im
 
 #### To add
 * To add training and inference on custom datasets
-* Method to integrate 1hop, 2hop, 3hop into one training procedure
+* Method to integrate 1hop, 2hop, 3hop into the same model architecture
 
 
 ### Installation 
