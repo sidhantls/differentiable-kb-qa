@@ -73,9 +73,8 @@ def load_triplets_metaqa(path: str, not_inverse_fields = ['release_year', 'in_la
     Follows the format of MetaQA, kg.txt
     
     Inputs:
-        - path to file 
-        - keep_only_entities - contains dict of those entities that we want to keep in KB. This is only useful 
-            for aligning the large metaqa with the new updated metaqa dataset. Keep this empty for all other usecases
+        - path to kb file 
+        - not_inverse_fields: list of relations to not invert edges for. unused
 
     Returns:
         - triplets: list of tuples (headid, relid, tailid)
@@ -114,16 +113,15 @@ def load_triplets_metaqa(path: str, not_inverse_fields = ['release_year', 'in_la
             
             triplets.append((head, rel, tail))
             
-            # add inverse relationship
-            # according to benchmark - https://github.com/google-research/language/blob/master/language/emql/preprocess/metaqa_preprocess.py#L63
-             
-            if rel not in not_inverse_fields:
-                rel = rel + '-inv'
-                triplets.append((tail, rel, head))
-                
-                if rel not in rel_to_idx: 
-                    rel_idx += 1
-                    rel_to_idx[rel] = rel_idx
+            # add inverse relationship for all edges
+            # similar to benchmark - https://github.com/google-research/language/blob/master/language/emql/preprocess/metaqa_preprocess.py#L63
+                        
+            rel = rel + '-inv'
+            triplets.append((tail, rel, head))
+
+            if rel not in rel_to_idx: 
+                rel_idx += 1
+                rel_to_idx[rel] = rel_idx
                 
             
             
