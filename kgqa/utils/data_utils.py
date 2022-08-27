@@ -184,6 +184,8 @@ def santity_check(qa_pairs, entity_to_idx):
     
     print(f'number of entities missing {len(missing)}: {missing[:3]}')
 
+    return missing
+
 
 
 def create_sparse_tensor(ent_to_idx, triplets, name='head'):
