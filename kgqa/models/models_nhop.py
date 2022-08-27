@@ -342,40 +342,9 @@ class GNNLightning2(LightningModule):
         return optimizer
 
 
-
-
 def calculate_BCE(preds, labels):
     loss = F.binary_cross_entropy(preds, labels)
     return loss
-
-# def compute_hit_1(preds, true):
-
-
-def compute_multilabel_precision(preds, true, threshold=0.5):
-    """
-    Calculates multi-label precision and recall 
-    
-    Unused
-
-    """
-
-    preds = (preds>=threshold).float()
-
-    true_positives = (preds == true) & (true == 1)
-    recall = true_positives.sum(1)/true.sum(1)
-    mean_recall = recall.mean()
-
-    precision = true_positives.sum(1)/preds.sum(1)
-    # fill nans and missing
-    precision[precision==torch.inf] = torch.nan
-    # precision[torch.isnan(precision)] = 0
-    # mean_precision = precision.mean()
-
-    mean_precision = precision.nanmean()
-
-    f1 = mean_recall * mean_precision / (mean_precision + mean_recall)
-
-    return mean_recall, mean_precision, f1
 
 
 def get_hit_k1(preds, true, aggregate=True):
