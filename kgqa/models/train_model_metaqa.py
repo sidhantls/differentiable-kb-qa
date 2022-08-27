@@ -11,6 +11,7 @@ root_dir = Path(os.getcwd()).parents[0]
 sys.path.append(str(root_dir))
 
 from utils import data_utils
+from utils.dataset_utils import QADataset
 
 import models_nhop
 
@@ -92,63 +93,15 @@ val_tokens = tokenizer([row[0] for row in val_pairs], padding=True, truncation=T
 train_tokens = tokenizer([row[0] for row in train_pairs], padding=True, truncation=True, max_length=200, return_tensors='pt')
 test_tokens = tokenizer([row[0] for row in test_pairs], padding=True, truncation=True, max_length=200, return_tensors='pt')
 
-
-class QADataset(Dataset):
-    def __init__(self, qa_pairs, q_tokens, entity_to_idx):
-        self.qa_pairs = qa_pairs
-        self.entity_to_idx = entity_to_idx
-        self.q_tokens = q_tokens
-
-    def __len__(self):
-        return len(self.qa_pairs)
-
-    def __getitem__(self, idx):
-        pad = 5
-        token_sample = {key: self.q_tokens[key][idx, :] for key in self.q_tokens}
-        
-        head_entities = self.qa_pairs[idx][2]
-        head_entities = [self.entity_to_idx[entity] for entity in head_entities]
-                
-        head_entities = self.create_onehot_entity_vector(head_entities)
-        
-        tail_entities = self.qa_pairs[idx][1]
-        tail_entities = [self.entity_to_idx[entity] for entity in tail_entities]
-        
-        tail_entities = self.create_onehot_entity_vector(tail_entities)
-        
-        return token_sample, head_entities, tail_entities
-        
-    
-    def pad_entity(self, list1, pad=5):
-        # max length should be this 
-        if len(list1) > pad:
-            list1 = list1[:pad]
-        
-        assert len(list1) > 0
-        
-        list1 = list1 + [-1] * (pad-len(list1))
-        return list1
-    
-    def create_onehot_entity_vector(self, entities):
-        """
-        Inputs: entities: list of ints 
-        
-        """
-        num_entities = len(self.entity_to_idx)
-        
-        entity_tensor = torch.zeros(num_entities)
-        entity_tensor[entities] = 1
-        
-        return entity_tensor
-
 val_dataset = QADataset(val_pairs, val_tokens, entity_to_idx)
 test_dataset = QADataset(test_pairs, test_tokens, entity_to_idx)
 train_dataset = QADataset(train_pairs, train_tokens, entity_to_idx)
 
 train_bs = 128
-val_dl = DataLoader(val_dataset, batch_size=64)
+eval_bs = 256
+val_dl = DataLoader(val_dataset, batch_size=eval_bs)
 train_dl = DataLoader(train_dataset, batch_size=train_bs, shuffle=True)
-test_dl = DataLoader(test_dataset, batch_size=64)
+test_dl = DataLoader(test_dataset, batch_size=eval_bs)
 
 for batch in train_dl:
     break
@@ -166,13 +119,13 @@ max_epochs = 5
 
 USE_GPU = torch.cuda.is_available()
 
-early_stop_callback = EarlyStopping(monitor="train_hit_k1", 
-                                    min_delta=0.002,
+early_stop_callback = EarlyStopping(monitor="val_hit_k1", 
+                                    min_delta=0.003,
                                     patience=2, 
                                     verbose=False, 
                                     mode="max")
 
-checkpoint_callback = ModelCheckpoint(monitor=f"train_hit_k1",
+checkpoint_callback = ModelCheckpoint(monitor=f"val_hit_k1",
                                     save_top_k=1,
                                       dirpath='checkpoints',
                                       mode='max',
@@ -195,7 +148,7 @@ else:
 log_every_n_steps = 10
 logger = TensorBoardLogger("kb_logs", name=f"reifedkb-{NUM_HOPS}")
 
-trainer = pl.Trainer(max_epochs=max_epochs, gpus=gpus, logger=logger, callbacks=[early_stop_callback, checkpoint_callback],
+trainer = pl.Trainer(max_epochs=max_epochs, gpus=gpus, logger=None, callbacks=[early_stop_callback, checkpoint_callback],
                     val_check_interval=0.50, log_every_n_steps=log_every_n_steps)
 trainer.fit(net, train_dl, val_dl)
 
@@ -220,4 +173,3 @@ else:
     
 trainer.test(net, test_dl)
 print('Model saved path ', CKPT_PATH)
-
