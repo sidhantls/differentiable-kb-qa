@@ -368,3 +368,26 @@ def get_hit_k1(preds, true, aggregate=True):
     return mean_hit
 
 
+def interpret_follow_output(out, idx_to_entity, threshold=0.5):
+    """
+    Interpret the follow result from the model
+    """
+
+    bs, num_entities = out.shape 
+        
+    outputs_names = []
+    output_ids = []
+    for idx in range(bs):
+        object_probs = out[idx, :]
+        
+        # set all values less than threshold to be 0
+        condition = object_probs >= threshold
+        object_preds = object_probs.where(condition, torch.tensor(0.))
+        # get indices where value is non zero (true preds)
+        pred_object_ids = object_preds.nonzero(as_tuple=True)[0]
+        
+        pred_object_names = [idx_to_entity[object_id.item()] for object_id in pred_object_ids]
+        outputs_names.append(pred_object_names)
+        output_ids.append(pred_object_ids.tolist())
+            
+    return outputs_names, output_ids
