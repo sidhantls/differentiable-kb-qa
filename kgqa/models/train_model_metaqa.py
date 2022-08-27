@@ -148,7 +148,7 @@ else:
 log_every_n_steps = 10
 logger = TensorBoardLogger("kb_logs", name=f"reifedkb-{NUM_HOPS}")
 
-trainer = pl.Trainer(max_epochs=max_epochs, gpus=gpus, logger=None, callbacks=[early_stop_callback, checkpoint_callback],
+trainer = pl.Trainer(max_epochs=max_epochs, gpus=gpus, logger=logger, callbacks=[early_stop_callback, checkpoint_callback],
                     val_check_interval=0.50, log_every_n_steps=log_every_n_steps)
 trainer.fit(net, train_dl, val_dl)
 
